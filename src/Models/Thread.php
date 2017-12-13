@@ -412,6 +412,24 @@ class Thread extends Eloquent
     }
 
     /**
+     * @param $message
+     * @param null $user
+     * @return Message
+     */
+    public function send($message, $user = null)
+    {
+        $message = ($message instanceof Message ? $message : (new Message)->fill(['body' => $message]));
+
+        if ($user) {
+            $message->setUser($user);
+        }
+
+        $this->messages()->save($message);
+
+        return $message;
+    }
+
+    /**
      * @param $subject
      * @return Thread
      */

@@ -3,6 +3,7 @@
 namespace Cmgmyr\Messenger\Test;
 
 use Carbon\Carbon;
+use Cmgmyr\Messenger\Models\Message;
 use Cmgmyr\Messenger\Models\Participant;
 use Cmgmyr\Messenger\Models\Thread;
 use Cmgmyr\Messenger\Test\Stubs\Models\User;
@@ -506,5 +507,21 @@ class EloquentThreadTest extends TestCase
         $this->faktory->create('thread')->setSubject($subject)->save();
 
         $this->assertEquals(1, Thread::forSubject($subject)->count());
+    }
+
+    /** @test **/
+    function it_can_send_message_through_a_thread()
+    {
+        $thread = $this->faktory->create('thread');
+
+        // As a string
+        $message = $thread->send('Hello world', User::firstOrFail());
+        $this->assertEquals('Hello world', $message->body);
+        $this->assertTrue($message->exists);
+
+        // As an instance
+        $message = $thread->send(new Message(['body' => 'Hello world']), User::firstOrFail());
+        $this->assertEquals('Hello world', $message->body);
+        $this->assertTrue($message->exists);
     }
 }

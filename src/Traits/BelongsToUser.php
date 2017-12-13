@@ -49,4 +49,16 @@ trait BelongsToUser
 
         return $query->where('user_id', '!=', $id)->orWhere('user_type', '!=', $type);
     }
+
+    /**
+     * @param $user
+     * @return mixed
+     */
+    public function setUser($user)
+    {
+        return $this->fill([
+            'user_id' => $user->getKey(),
+            'user_type' => $user->getMorphClass(),
+        ]);
+    }
 }
