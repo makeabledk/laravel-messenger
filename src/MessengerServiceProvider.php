@@ -76,6 +76,7 @@ class MessengerServiceProvider extends ServiceProvider
             'threads' => $config->get('messenger.threads_table', Models::thread()->getTable()),
         ]);
     }
+
 //
 //    protected function setUserModel()
 //    {

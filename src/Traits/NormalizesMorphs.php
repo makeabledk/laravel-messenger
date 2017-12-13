@@ -2,9 +2,6 @@
 
 namespace Cmgmyr\Messenger\Traits;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-
 trait NormalizesMorphs
 {
     /**
@@ -17,6 +14,7 @@ trait NormalizesMorphs
         if ($modelType === null) {
             return [$modelId->getKey(), $modelId->getMorphClass()];
         }
+
         return func_get_args();
     }
 }

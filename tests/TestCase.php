@@ -5,7 +5,6 @@ namespace Cmgmyr\Messenger\Test;
 date_default_timezone_set('America/New_York');
 
 use AdamWathan\Faktory\Faktory;
-use Cmgmyr\Messenger\Models\Models;
 use Illuminate\Database\Capsule\Manager as DB;
 use Orchestra\Testbench\TestCase as Orchestra;
 

@@ -3,12 +3,11 @@
 namespace Cmgmyr\Messenger\Test;
 
 use Carbon\Carbon;
-use Cmgmyr\Messenger\Models\Models;
 use Cmgmyr\Messenger\Models\Participant;
 use Cmgmyr\Messenger\Models\Thread;
 use Cmgmyr\Messenger\Test\Stubs\Models\User;
-use Illuminate\Database\Eloquent\Model as Eloquent;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model as Eloquent;
 use ReflectionClass;
 
 class EloquentThreadTest extends TestCase
@@ -156,12 +155,12 @@ class EloquentThreadTest extends TestCase
     {
         list($user1, $user2) = [
             User::findOrFail(1),
-            User::findOrFail(2)
+            User::findOrFail(2),
         ];
 
         list($thread1, $thread2) = [
             $this->faktory->create('thread'),
-            $this->faktory->create('thread')
+            $this->faktory->create('thread'),
         ];
 
         $this->faktory->create('participant', ['user_id' => $user1->id, 'thread_id' => $thread1->id]);
@@ -473,7 +472,7 @@ class EloquentThreadTest extends TestCase
     }
 
     /**
-     * TODO currently not supported
+     * TODO currently not supported.
      */
     public function it_should_get_the_creator_of_a_thread_without_messages()
     {
@@ -490,7 +489,7 @@ class EloquentThreadTest extends TestCase
     }
 
     /** @test **/
-    function it_can_attach_to_a_subject()
+    public function it_can_attach_to_a_subject()
     {
         $thread = $this->faktory->create('thread');
         $subject = User::first(); // could be any eloquent model
@@ -501,7 +500,7 @@ class EloquentThreadTest extends TestCase
     }
 
     /** @test **/
-    function it_can_find_a_thread_for_a_given_subject()
+    public function it_can_find_a_thread_for_a_given_subject()
     {
         $subject = User::first(); // could be any eloquent model
         $this->faktory->create('thread')->setSubject($subject)->save();

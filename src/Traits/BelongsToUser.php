@@ -30,7 +30,7 @@ trait BelongsToUser
      */
     public function scopeForUser(Builder $query, $userId, $userType = null)
     {
-        list ($id, $type) = $this->getMorphIdAndType($userId, $userType);
+        list($id, $type) = $this->getMorphIdAndType($userId, $userType);
 
         return $query->where('user_id', $id)->where('user_type', $type);
     }
@@ -45,7 +45,7 @@ trait BelongsToUser
      */
     public function scopeExceptForUser(Builder $query, $userId, $userType = null)
     {
-        list ($id, $type) = $this->getMorphIdAndType($userId, $userType);
+        list($id, $type) = $this->getMorphIdAndType($userId, $userType);
 
         return $query->where('user_id', '!=', $id)->orWhere('user_type', '!=', $type);
     }

@@ -363,7 +363,7 @@ class Thread extends Eloquent
     {
         list($name, $columns) = ['', $columns ?: ['name']];
 
-        foreach($columns as $column) {
+        foreach ($columns as $column) {
             $name .= $participant->user->$column;
         }
 
@@ -419,7 +419,7 @@ class Thread extends Eloquent
     {
         return $this->fill([
             'subject_id' => $subject->getKey(),
-            'subject_type' => $subject->getMorphClass()
+            'subject_type' => $subject->getMorphClass(),
         ]);
     }
 }
