@@ -53,10 +53,11 @@ class MessagesController extends Controller
         // $users = User::whereNotIn('id', $thread->participantsUserIds())->get();
 
         // don't show the current user in list
-        $userId = Auth::id();
-        $users = User::whereNotIn('id', $thread->participantsUserIds($userId))->get();
+        $users = User::whereNotIn('id',
+            $thread->participants()->withTrashed()->exceptForUser(Auth::user())->pluck('user_id')->toArray()
+        )->get();
 
-        $thread->markAsRead($userId);
+        $thread->markAsRead(Auth::user());
 
         return view('messenger.show', compact('thread', 'users'));
     }

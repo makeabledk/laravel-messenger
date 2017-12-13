@@ -30,9 +30,6 @@ class TestCase extends Orchestra
             require __DIR__ . '/factories.php';
         };
         $load_factories($this->faktory);
-
-        $userModel = User::class;
-        Models::setUserModel($userModel);
     }
 
     /**
@@ -135,7 +132,7 @@ class TestCase extends Orchestra
             function ($table) {
                 $table->increments('id');
                 $table->integer('thread_id')->unsigned();
-                $table->integer('user_id')->unsigned();
+                $table->morphs('user');
                 $table->text('body');
                 $table->timestamps();
                 $table->softDeletes();
@@ -153,7 +150,7 @@ class TestCase extends Orchestra
             function ($table) {
                 $table->increments('id');
                 $table->integer('thread_id')->unsigned();
-                $table->integer('user_id')->unsigned();
+                $table->morphs('user');
                 $table->timestamp('last_read')->nullable();
                 $table->timestamps();
                 $table->softDeletes();

@@ -2,13 +2,15 @@
 
 namespace Cmgmyr\Messenger\Models;
 
+use Cmgmyr\Messenger\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Message extends Eloquent
 {
-    use SoftDeletes;
+    use BelongsToUser,
+        SoftDeletes;
 
     /**
      * The database table used by the model.
@@ -29,7 +31,7 @@ class Message extends Eloquent
      *
      * @var array
      */
-    protected $fillable = ['thread_id', 'user_id', 'body'];
+    protected $fillable = ['thread_id', 'user_type', 'user_id', 'body'];
 
     /**
      * The attributes that should be mutated to dates.
@@ -61,18 +63,6 @@ class Message extends Eloquent
     }
 
     /**
-     * User relationship.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     *
-     * @codeCoverageIgnore
-     */
-    public function user()
-    {
-        return $this->belongsTo(Models::user(), 'user_id');
-    }
-
-    /**
      * Participants relationship.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
@@ -91,7 +81,7 @@ class Message extends Eloquent
      */
     public function recipients()
     {
-        return $this->participants()->where('user_id', '!=', $this->user_id);
+        return $this->participants()->exceptForUser($this->user_id, $this->user_type);
     }
 
     /**
@@ -101,12 +91,12 @@ class Message extends Eloquent
      * @param $userId
      * @return Builder
      */
-    public function scopeUnreadForUser(Builder $query, $userId)
+    public function scopeUnreadForUser(Builder $query, $userId, $userType = null)
     {
         return $query->has('thread')
-            ->where('user_id', '!=', $userId)
-            ->whereHas('participants', function (Builder $query) use ($userId) {
-                $query->where('user_id', $userId)
+            ->exceptForUser($userId, $userType)
+            ->whereHas('participants', function (Builder $query) use ($userId, $userType) {
+                $query->forUser($userId, $userType)
                     ->where(function (Builder $q) {
                         $q->where('last_read', '<', $this->getConnection()->raw($this->getConnection()->getTablePrefix() . $this->getTable() . '.created_at'))
                             ->orWhereNull('last_read');
