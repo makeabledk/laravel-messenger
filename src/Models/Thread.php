@@ -27,7 +27,7 @@ class Thread extends Eloquent
      *
      * @var array
      */
-    protected $fillable = ['subject'];
+    protected $fillable = ['name', 'subject_id', 'subject_type'];
 
     /**
      * The attributes that should be mutated to dates.
@@ -86,6 +86,14 @@ class Thread extends Eloquent
     }
 
     /**
+     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+     */
+    public function subject()
+    {
+        return $this->morphTo();
+    }
+
+    /**
      * User's relationship.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
@@ -124,12 +132,12 @@ class Thread extends Eloquent
     /**
      * Returns all threads by subject.
      *
-     * @param string $subject
+     * @param string $name
      * @return self
      */
-    public static function getBySubject($subject)
+    public static function getByName($name)
     {
-        return self::where('subject', 'like', $subject)->get();
+        return self::where('name', 'like', $name)->get();
     }
 
     /**
@@ -152,6 +160,18 @@ class Thread extends Eloquent
             ->where($participantsTable . '.user_id', $userId)
             ->where($participantsTable . '.deleted_at', null)
             ->select($threadsTable . '.*');
+    }
+
+    /**
+     * @param $query
+     * @param $subject
+     * @return mixed
+     */
+    public function scopeForSubject($query, $subject)
+    {
+        return $query
+            ->where('subject_id', $subject->getKey())
+            ->where('subject_type', $subject->getMorphClass());
     }
 
     /**
@@ -389,5 +409,17 @@ class Thread extends Eloquent
     public function userUnreadMessagesCount($userId, $userType = null)
     {
         return $this->userUnreadMessages($userId, $userType)->count();
+    }
+
+    /**
+     * @param $subject
+     * @return Thread
+     */
+    public function setSubject($subject)
+    {
+        return $this->fill([
+            'subject_id' => $subject->getKey(),
+            'subject_type' => $subject->getMorphClass()
+        ]);
     }
 }
