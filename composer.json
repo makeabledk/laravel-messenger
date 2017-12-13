@@ -1,5 +1,5 @@
 {
-    "name": "cmgmyr/messenger",
+    "name": "makeabledk/messenger",
     "description": "Simple user messaging tool for Laravel",
     "keywords": ["laravel", "messenger", "messaging", "user messaging"],
     "license": "MIT",
@@ -9,10 +9,15 @@
             "email": "cmgmyr@gmail.com",
             "homepage": "https://github.com/cmgmyr",
             "role": "Developer"
+        },
+        {
+            "name": "Rasmus Nielsen",
+            "email": "rasmus@makeable.dk",
+            "role": "Developer"
         }
     ],
     "require": {
-        "php": ">=5.5.0",
+        "php": ">=7.0.0",
         "illuminate/config": "~5.5",
         "illuminate/support": "~5.5",
         "illuminate/database": "~5.5",
