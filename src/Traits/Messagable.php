@@ -68,7 +68,7 @@ trait Messagable
      */
     public function unreadMessagesCount()
     {
-        return Message::unreadForUser($this->getKey())->count();
+        return Message::unreadForUser($this)->count();
     }
 
     /**

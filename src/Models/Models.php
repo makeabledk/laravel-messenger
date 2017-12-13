@@ -19,13 +19,6 @@ class Models
     protected static $tables = [];
 
     /**
-     * Internal pointer name for the app's "user" model.
-     *
-     * @var string
-     */
-    private static $userModelLookupKey = 'User';
-
-    /**
      * Set the model to be used for threads.
      *
      * @param string $model
@@ -53,16 +46,6 @@ class Models
     public static function setThreadModel($model)
     {
         static::$models[Thread::class] = $model;
-    }
-
-    /**
-     * Set the model to be used for users.
-     *
-     * @param  string  $model
-     */
-    public static function setUserModel($model)
-    {
-        static::$models[self::$userModelLookupKey] = $model;
     }
 
     /**
@@ -136,17 +119,6 @@ class Models
     public static function thread(array $attributes = [])
     {
         return static::make(Thread::class, $attributes);
-    }
-
-    /**
-     * Get an instance of the user model.
-     *
-     * @param  array  $attributes
-     * @return \Illuminate\Database\Eloquent\Model
-     */
-    public static function user(array $attributes = [])
-    {
-        return static::make(self::$userModelLookupKey, $attributes);
     }
 
     /**

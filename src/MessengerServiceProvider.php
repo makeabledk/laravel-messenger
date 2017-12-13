@@ -19,7 +19,6 @@ class MessengerServiceProvider extends ServiceProvider
     {
         $this->offerPublishing();
         $this->setMessengerModels();
-        $this->setUserModel();
     }
 
     /**
@@ -77,19 +76,19 @@ class MessengerServiceProvider extends ServiceProvider
             'threads' => $config->get('messenger.threads_table', Models::thread()->getTable()),
         ]);
     }
-
-    protected function setUserModel()
-    {
-        $config = $this->app->make('config');
-
-        $model = $config->get('auth.providers.users.model', function () use ($config) {
-            return $config->get('auth.model', $config->get('messenger.user_model'));
-        });
-
-        Models::setUserModel($model);
-
-        Models::setTables([
-            'users' => (new $model)->getTable(),
-        ]);
-    }
+//
+//    protected function setUserModel()
+//    {
+//        $config = $this->app->make('config');
+//
+//        $model = $config->get('auth.providers.users.model', function () use ($config) {
+//            return $config->get('auth.model', $config->get('messenger.user_model'));
+//        });
+//
+//        Models::setUserModel($model);
+//
+//        Models::setTables([
+//            'users' => (new $model)->getTable(),
+//        ]);
+//    }
 }

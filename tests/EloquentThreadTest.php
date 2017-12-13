@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Cmgmyr\Messenger\Models\Models;
 use Cmgmyr\Messenger\Models\Participant;
 use Cmgmyr\Messenger\Models\Thread;
+use Cmgmyr\Messenger\Test\Stubs\Models\User;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 use ReflectionClass;
 
@@ -104,43 +105,19 @@ class EloquentThreadTest extends TestCase
     }
 
     /** @test */
-    public function it_should_get_all_thread_participants()
-    {
-        $thread = $this->faktory->create('thread');
-        $participantIds = $thread->participantsUserIds();
-        $this->assertCount(0, $participantIds);
-
-        $user_1 = $this->faktory->build('participant');
-        $user_2 = $this->faktory->build('participant', ['user_id' => 2]);
-        $user_3 = $this->faktory->build('participant', ['user_id' => 3]);
-
-        $thread->participants()->saveMany([$user_1, $user_2, $user_3]);
-
-        $participantIds = $thread->participantsUserIds();
-        $this->assertCount(3, $participantIds);
-        $this->assertEquals(2, $participantIds[1]);
-
-        $participantIds = $thread->participantsUserIds(999);
-        $this->assertCount(4, $participantIds);
-        $this->assertEquals(999, end($participantIds));
-
-        $this->assertInternalType('array', $participantIds);
-    }
-
-    /** @test */
     public function it_should_get_all_threads_for_a_user()
     {
-        $userId = 1;
+        $user = User::firstOrFail();
 
-        $participant_1 = $this->faktory->create('participant', ['user_id' => $userId]);
+        $participant_1 = $this->faktory->create('participant', ['user_id' => $user->id]);
         $thread = $this->faktory->create('thread');
         $thread->participants()->saveMany([$participant_1]);
 
         $thread2 = $this->faktory->create('thread', ['subject' => 'Second Thread']);
-        $participant_2 = $this->faktory->create('participant', ['user_id' => $userId, 'thread_id' => $thread2->id]);
+        $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id]);
         $thread2->participants()->saveMany([$participant_2]);
 
-        $threads = Thread::forUser($userId)->get();
+        $threads = Thread::forUser($user)->get();
         $this->assertCount(2, $threads);
     }
 
@@ -152,52 +129,53 @@ class EloquentThreadTest extends TestCase
         $user_2 = $this->faktory->build('participant', ['user_id' => 2]);
         $thread->participants()->saveMany([$user_1, $user_2]);
 
-        $threadUserIds = $thread->users()->get()->pluck('id')->toArray();
+        $threadUserIds = $thread->users(User::class)->get()->pluck('id')->toArray();
         $this->assertArraySubset([1, 2], $threadUserIds);
     }
 
     /** @test */
     public function it_should_get_all_threads_for_a_user_with_new_messages()
     {
-        $userId = 1;
+        $user = User::findOrFail(1);
 
-        $participant_1 = $this->faktory->create('participant', ['user_id' => $userId, 'last_read' => Carbon::now()]);
+        $participant_1 = $this->faktory->create('participant', ['user_id' => $user->id, 'last_read' => Carbon::now()]);
         $thread = $this->faktory->create('thread', ['updated_at' => Carbon::yesterday()]);
         $thread->participants()->saveMany([$participant_1]);
 
         $thread2 = $this->faktory->create('thread', ['subject' => 'Second Thread', 'updated_at' => Carbon::now()]);
-        $participant_2 = $this->faktory->create('participant', ['user_id' => $userId, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
+        $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
         $thread2->participants()->saveMany([$participant_2]);
 
-        $threads = Thread::forUserWithNewMessages($userId)->get();
-        $this->assertCount(1, $threads);
+        $this->assertEquals(1, Thread::forUserWithNewMessages($user)->count());
+        $this->assertEquals(1, Thread::forUserWithNewMessages($user->id, $user->getMorphClass())->count());
     }
 
     /** @test */
     public function it_should_get_all_threads_shared_by_specified_users()
     {
-        $userId = 1;
-        $userId2 = 2;
+        list($user1, $user2) = [
+            User::findOrFail(1),
+            User::findOrFail(2)
+        ];
 
-        $thread = $this->faktory->create('thread');
-        $thread2 = $this->faktory->create('thread');
+        list($thread1, $thread2) = [
+            $this->faktory->create('thread'),
+            $this->faktory->create('thread')
+        ];
 
-        $this->faktory->create('participant', ['user_id' => $userId, 'thread_id' => $thread->id]);
-        $this->faktory->create('participant', ['user_id' => $userId2, 'thread_id' => $thread->id]);
-        $this->faktory->create('participant', ['user_id' => $userId, 'thread_id' => $thread2->id]);
+        $this->faktory->create('participant', ['user_id' => $user1->id, 'thread_id' => $thread1->id]);
+        $this->faktory->create('participant', ['user_id' => $user1->id, 'thread_id' => $thread2->id]);
+        $this->faktory->create('participant', ['user_id' => $user2->id, 'thread_id' => $thread2->id]);
 
-        $threads = Thread::between([$userId, $userId2])->get();
-        $this->assertCount(1, $threads);
+        $this->assertCount(1, Thread::between([$user1, $user2])->get());
     }
 
     /** @test */
     public function it_should_add_a_participant_to_a_thread()
     {
-        $participant = 1;
-
         $thread = $this->faktory->create('thread');
 
-        $thread->addParticipant($participant);
+        $thread->addParticipant(User::first());
 
         $this->assertEquals(1, $thread->participants()->count());
     }
@@ -205,11 +183,9 @@ class EloquentThreadTest extends TestCase
     /** @test */
     public function it_should_add_participants_to_a_thread_with_array()
     {
-        $participants = [1, 2, 3];
-
         $thread = $this->faktory->create('thread');
 
-        $thread->addParticipant($participants);
+        $thread->addParticipant(User::take(3)->get());
 
         $this->assertEquals(3, $thread->participants()->count());
     }
@@ -219,7 +195,7 @@ class EloquentThreadTest extends TestCase
     {
         $thread = $this->faktory->create('thread');
 
-        $thread->addParticipant(1, 2);
+        $thread->addParticipant(User::findOrFail(1), User::findOrFail(2));
 
         $this->assertEquals(2, $thread->participants()->count());
     }
@@ -227,48 +203,47 @@ class EloquentThreadTest extends TestCase
     /** @test */
     public function it_should_mark_the_participant_as_read()
     {
-        $userId = 1;
+        $user = User::firstOrFail();
         $last_read = Carbon::yesterday();
 
-        $participant = $this->faktory->create('participant', ['user_id' => $userId, 'last_read' => $last_read]);
+        $participant = $this->faktory->create('participant', ['user_id' => $user->id, 'last_read' => $last_read]);
         $thread = $this->faktory->create('thread');
         $thread->participants()->saveMany([$participant]);
 
-        $thread->markAsRead($userId);
+        $thread->markAsRead($user);
 
-        $this->assertNotEquals($thread->getParticipantFromUser($userId)->last_read, $last_read);
+        $this->assertNotEquals($thread->getParticipantFromUser($user)->last_read, $last_read);
     }
 
     /** @test */
     public function it_should_see_if_thread_is_unread_by_user()
     {
-        $userId = 1;
+        $user = User::firstOrFail();
 
-        $participant_1 = $this->faktory->create('participant', ['user_id' => $userId, 'last_read' => Carbon::now()]);
+        $participant_1 = $this->faktory->create('participant', ['user_id' => $user->id, 'last_read' => Carbon::now()]);
         $thread = $this->faktory->create('thread', ['updated_at' => Carbon::yesterday()]);
         $thread->participants()->saveMany([$participant_1]);
 
-        $this->assertFalse($thread->isUnread($userId));
+        $this->assertFalse($thread->isUnread($user));
 
         $thread2 = $this->faktory->create('thread', ['subject' => 'Second Thread', 'updated_at' => Carbon::now()]);
-        $participant_2 = $this->faktory->create('participant', ['user_id' => $userId, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
+        $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
         $thread2->participants()->saveMany([$participant_2]);
 
-        $this->assertTrue($thread2->isUnread($userId));
+        $this->assertTrue($thread2->isUnread($user));
     }
 
     /** @test */
-    public function it_should_get_a_participant_from_userid()
+    public function it_should_get_a_participant_from_a_user()
     {
-        $userId = 1;
+        $user = User::firstOrFail();
 
-        $participant = $this->faktory->create('participant', ['user_id' => $userId]);
+        $participant = $this->faktory->create('participant', ['user_id' => $user->id]);
         $thread = $this->faktory->create('thread');
         $thread->participants()->saveMany([$participant]);
 
-        $newParticipant = $thread->getParticipantFromUser($userId);
-
-        $this->assertInstanceOf(Participant::class, $newParticipant);
+        $this->assertInstanceOf(Participant::class, $thread->getParticipantFromUser($user));
+        $this->assertInstanceOf(Participant::class, $thread->getParticipantFromUser($user->id, $user->getMorphClass()));
     }
 
     /**
@@ -279,7 +254,7 @@ class EloquentThreadTest extends TestCase
     {
         $thread = $this->faktory->create('thread');
 
-        $thread->getParticipantFromUser(99);
+        $thread->getParticipantFromUser(99, User::class);
     }
 
     /** @test */
@@ -288,11 +263,11 @@ class EloquentThreadTest extends TestCase
         $deleted_at = Carbon::yesterday();
         $thread = $this->faktory->create('thread');
 
-        $user_1 = $this->faktory->build('participant', ['deleted_at' => $deleted_at]);
-        $user_2 = $this->faktory->build('participant', ['user_id' => 2, 'deleted_at' => $deleted_at]);
-        $user_3 = $this->faktory->build('participant', ['user_id' => 3, 'deleted_at' => $deleted_at]);
+        $participant_1 = $this->faktory->build('participant', ['deleted_at' => $deleted_at]);
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2, 'deleted_at' => $deleted_at]);
+        $participant_3 = $this->faktory->build('participant', ['user_id' => 3, 'deleted_at' => $deleted_at]);
 
-        $thread->participants()->saveMany([$user_1, $user_2, $user_3]);
+        $thread->participants()->saveMany([$participant_1, $participant_2, $participant_3]);
 
         $participants = $thread->participants();
         $this->assertEquals(0, $participants->count());
@@ -301,22 +276,6 @@ class EloquentThreadTest extends TestCase
 
         $participants = $thread->participants();
         $this->assertEquals(3, $participants->count());
-    }
-
-    /** @test */
-    public function it_should_generate_participant_select_string()
-    {
-        $method = self::getMethod('createSelectString');
-        $thread = new Thread();
-        $tableName = Models::table('users');
-
-        $columns = ['name'];
-        $select = $method->invokeArgs($thread, [$columns]);
-        $this->assertEquals('(' . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . '.name) as name', $select);
-
-        $columns = ['name', 'email'];
-        $select = $method->invokeArgs($thread, [$columns]);
-        $this->assertEquals('(' . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . ".name || ' ' || " . Eloquent::getConnectionResolver()->getTablePrefix() . $tableName . '.email) as name', $select);
     }
 
     /** @test */
@@ -333,26 +292,26 @@ class EloquentThreadTest extends TestCase
         $string = $thread->participantsString();
         $this->assertEquals('Chris Gmyr, Adam Wathan, Taylor Otwell', $string);
 
-        $string = $thread->participantsString(1);
+        $string = $thread->participantsString(User::findOrFail(1));
         $this->assertEquals('Adam Wathan, Taylor Otwell', $string);
 
-        $string = $thread->participantsString(1, ['email']);
+        $string = $thread->participantsString(User::findOrFail(1), ['email']);
         $this->assertEquals('adam@test.com, taylor@test.com', $string);
     }
 
     /** @test */
-    public function it_should_check_users_and_participants()
+    public function it_can_check_if_user_is_a_participant()
     {
         $thread = $this->faktory->create('thread');
 
-        $participant_1 = $this->faktory->build('participant');
+        $participant_1 = $this->faktory->build('participant', ['user_id' => 1]);
         $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
 
         $thread->participants()->saveMany([$participant_1, $participant_2]);
 
-        $this->assertTrue($thread->hasParticipant(1));
-        $this->assertTrue($thread->hasParticipant(2));
-        $this->assertFalse($thread->hasParticipant(3));
+        $this->assertTrue($thread->hasParticipant(User::findOrFail(1)));
+        $this->assertTrue($thread->hasParticipant(User::findOrFail(2)));
+        $this->assertFalse($thread->hasParticipant(User::findOrFail(3)));
     }
 
     /** @test */
@@ -365,7 +324,7 @@ class EloquentThreadTest extends TestCase
 
         $thread->participants()->saveMany([$participant_1, $participant_2]);
 
-        $thread->removeParticipant(2);
+        $thread->removeParticipant($participant_2->user);
 
         $this->assertEquals(1, $thread->participants()->count());
     }
@@ -375,12 +334,12 @@ class EloquentThreadTest extends TestCase
     {
         $thread = $this->faktory->create('thread');
 
-        $participant_1 = $this->faktory->build('participant');
+        $participant_1 = $this->faktory->build('participant', ['user_id' => 1]);
         $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
 
         $thread->participants()->saveMany([$participant_1, $participant_2]);
 
-        $thread->removeParticipant([1, 2]);
+        $thread->removeParticipant([User::findOrFail(1), User::findOrFail(2)]);
 
         $this->assertEquals(0, $thread->participants()->count());
     }
@@ -390,12 +349,12 @@ class EloquentThreadTest extends TestCase
     {
         $thread = $this->faktory->create('thread');
 
-        $participant_1 = $this->faktory->build('participant');
+        $participant_1 = $this->faktory->build('participant', ['user_id' => 1]);
         $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
 
         $thread->participants()->saveMany([$participant_1, $participant_2]);
 
-        $thread->removeParticipant(1, 2);
+        $thread->removeParticipant(User::findOrFail(1), User::findOrFail(2));
 
         $this->assertEquals(0, $thread->participants()->count());
     }
@@ -416,7 +375,7 @@ class EloquentThreadTest extends TestCase
         $thread->participants()->saveMany([$participant_1, $participant_2]);
         $thread->messages()->saveMany([$message_1]);
 
-        $thread->markAsRead($participant_2->user_id);
+        $thread->markAsRead($participant_2->user);
 
         // Simulate delay after last read
         sleep(1);
@@ -428,11 +387,13 @@ class EloquentThreadTest extends TestCase
 
         $thread->messages()->saveMany([$message_2]);
 
-        $this->assertEquals('Message 1', $thread->userUnreadMessages(1)->first()->body);
-        $this->assertCount(2, $thread->userUnreadMessages(1));
+//        dd($thread->userUnreadMessages($participant_1->user));
 
-        $this->assertEquals('Message 2', $thread->userUnreadMessages(2)->first()->body);
-        $this->assertCount(1, $thread->userUnreadMessages(2));
+        $this->assertEquals('Message 1', $thread->userUnreadMessages($participant_1->user)->first()->body);
+        $this->assertCount(2, $thread->userUnreadMessages($participant_1->user));
+
+        $this->assertEquals('Message 2', $thread->userUnreadMessages($participant_2->user)->first()->body);
+        $this->assertCount(1, $thread->userUnreadMessages($participant_2->user));
     }
 
     /** @test */
@@ -451,7 +412,7 @@ class EloquentThreadTest extends TestCase
         $thread->participants()->saveMany([$participant_1, $participant_2]);
         $thread->messages()->saveMany([$message_1]);
 
-        $thread->markAsRead($participant_2->user_id);
+        $thread->markAsRead($participant_2->user);
 
         // Simulate delay after last read
         sleep(1);
@@ -463,17 +424,17 @@ class EloquentThreadTest extends TestCase
 
         $thread->messages()->saveMany([$message_2]);
 
-        $this->assertEquals(2, $thread->userUnreadMessagesCount(1));
+        $this->assertEquals(2, $thread->userUnreadMessagesCount($participant_1->user));
 
-        $this->assertEquals(1, $thread->userUnreadMessagesCount(2));
+        $this->assertEquals(1, $thread->userUnreadMessagesCount($participant_2->user));
     }
 
     /** @test */
-    public function it_should_return_empty_collection_when_user_not_participant()
+    public function it_should_return_zero_unread_messages_when_user_not_participant()
     {
         $thread = $this->faktory->create('thread');
 
-        $this->assertEquals(0, $thread->userUnreadMessagesCount(1));
+        $this->assertEquals(0, $thread->userUnreadMessagesCount(User::first()));
     }
 
     /** @test */
@@ -481,11 +442,11 @@ class EloquentThreadTest extends TestCase
     {
         $thread = $this->faktory->create('thread');
 
-        $user_1 = $this->faktory->build('participant');
-        $user_2 = $this->faktory->build('participant', ['user_id' => 2]);
-        $user_3 = $this->faktory->build('participant', ['user_id' => 3]);
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+        $participant_3 = $this->faktory->build('participant', ['user_id' => 3]);
 
-        $thread->participants()->saveMany([$user_1, $user_2, $user_3]);
+        $thread->participants()->saveMany([$participant_1, $participant_2, $participant_3]);
 
         $message_1 = $this->faktory->build('message', ['created_at' => Carbon::yesterday()]);
         $message_2 = $this->faktory->build('message', ['user_id' => 2]);
@@ -496,20 +457,32 @@ class EloquentThreadTest extends TestCase
         $this->assertEquals('Chris Gmyr', $thread->creator()->name);
     }
 
-    /**
-     * @test
-     *
-     * TODO: Need to get real creator of the thread without messages in future versions.
-     */
-    public function it_should_get_the_null_creator_of_a_thread_without_messages()
+    /** @test */
+    public function it_returns_null_when_getting_the_creator_of_a_thread_without_messages()
     {
         $thread = $this->faktory->create('thread');
 
-        $user_1 = $this->faktory->build('participant');
-        $user_2 = $this->faktory->build('participant', ['user_id' => 2]);
-        $user_3 = $this->faktory->build('participant', ['user_id' => 3]);
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+        $participant_3 = $this->faktory->build('participant', ['user_id' => 3]);
 
-        $thread->participants()->saveMany([$user_1, $user_2, $user_3]);
+        $thread->participants()->saveMany([$participant_1, $participant_2, $participant_3]);
+
+        $this->assertNull($thread->creator());
+    }
+
+    /**
+     * TODO currently not supported
+     */
+    public function it_should_get_the_creator_of_a_thread_without_messages()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $participant_1 = $this->faktory->build('participant');
+        $participant_2 = $this->faktory->build('participant', ['user_id' => 2]);
+        $participant_3 = $this->faktory->build('participant', ['user_id' => 3]);
+
+        $thread->participants()->saveMany([$participant_1, $participant_2, $participant_3]);
 
         $this->assertFalse($thread->creator()->exists);
         $this->assertNull($thread->creator()->name);
