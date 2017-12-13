@@ -115,7 +115,8 @@ class TestCase extends Orchestra
             'threads',
             function ($table) {
                 $table->increments('id');
-                $table->string('subject');
+                $table->string('name')->nullable();
+                $table->nullableMorphs('subject');
                 $table->timestamps();
                 $table->softDeletes();
             }

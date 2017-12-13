@@ -1,7 +1,7 @@
 <?php
 
 $faktory->define(['thread', 'Cmgmyr\Messenger\Models\Thread'], function ($f) {
-    $f->subject = 'Sample thread';
+    $f->name = 'Sample thread';
 });
 
 $faktory->define(['message', 'Cmgmyr\Messenger\Models\Message'], function ($f) {

@@ -8,6 +8,7 @@ use Cmgmyr\Messenger\Models\Participant;
 use Cmgmyr\Messenger\Models\Thread;
 use Cmgmyr\Messenger\Test\Stubs\Models\User;
 use Illuminate\Database\Eloquent\Model as Eloquent;
+use Illuminate\Database\Eloquent\Model;
 use ReflectionClass;
 
 class EloquentThreadTest extends TestCase
@@ -34,43 +35,43 @@ class EloquentThreadTest extends TestCase
     }
 
     /** @test */
-    public function search_specific_thread_by_subject()
+    public function search_specific_thread_by_name()
     {
-        $this->faktory->create('thread', ['id' => 1, 'subject' => 'first subject']);
-        $this->faktory->create('thread', ['id' => 2, 'subject' => 'second subject']);
+        $this->faktory->create('thread', ['id' => 1, 'name' => 'first name']);
+        $this->faktory->create('thread', ['id' => 2, 'name' => 'second name']);
 
-        $threads = Thread::getBySubject('first subject');
+        $threads = Thread::getByName('first name');
 
         $this->assertEquals(1, $threads->count());
         $this->assertEquals(1, $threads->first()->id);
-        $this->assertEquals('first subject', $threads->first()->subject);
+        $this->assertEquals('first name', $threads->first()->name);
     }
 
     /** @test */
-    public function search_threads_by_subject()
+    public function search_threads_by_name()
     {
-        $this->faktory->create('thread', ['id' => 1, 'subject' => 'first subject']);
-        $this->faktory->create('thread', ['id' => 2, 'subject' => 'second subject']);
+        $this->faktory->create('thread', ['id' => 1, 'name' => 'first name']);
+        $this->faktory->create('thread', ['id' => 2, 'name' => 'second name']);
 
-        $threads = Thread::getBySubject('%subject');
+        $threads = Thread::getByName('%name');
 
         $this->assertEquals(2, $threads->count());
 
         $this->assertEquals(1, $threads->first()->id);
-        $this->assertEquals('first subject', $threads->first()->subject);
+        $this->assertEquals('first name', $threads->first()->name);
 
         $this->assertEquals(2, $threads->last()->id);
-        $this->assertEquals('second subject', $threads->last()->subject);
+        $this->assertEquals('second name', $threads->last()->name);
     }
 
     /** @test */
     public function it_should_create_a_new_thread()
     {
         $thread = $this->faktory->build('thread');
-        $this->assertEquals('Sample thread', $thread->subject);
+        $this->assertEquals('Sample thread', $thread->name);
 
-        $thread = $this->faktory->build('thread', ['subject' => 'Second sample thread']);
-        $this->assertEquals('Second sample thread', $thread->subject);
+        $thread = $this->faktory->build('thread', ['name' => 'Second sample thread']);
+        $this->assertEquals('Second sample thread', $thread->name);
     }
 
     /** @test */
@@ -113,7 +114,7 @@ class EloquentThreadTest extends TestCase
         $thread = $this->faktory->create('thread');
         $thread->participants()->saveMany([$participant_1]);
 
-        $thread2 = $this->faktory->create('thread', ['subject' => 'Second Thread']);
+        $thread2 = $this->faktory->create('thread', ['name' => 'Second Thread']);
         $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id]);
         $thread2->participants()->saveMany([$participant_2]);
 
@@ -142,7 +143,7 @@ class EloquentThreadTest extends TestCase
         $thread = $this->faktory->create('thread', ['updated_at' => Carbon::yesterday()]);
         $thread->participants()->saveMany([$participant_1]);
 
-        $thread2 = $this->faktory->create('thread', ['subject' => 'Second Thread', 'updated_at' => Carbon::now()]);
+        $thread2 = $this->faktory->create('thread', ['name' => 'Second Thread', 'updated_at' => Carbon::now()]);
         $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
         $thread2->participants()->saveMany([$participant_2]);
 
@@ -226,7 +227,7 @@ class EloquentThreadTest extends TestCase
 
         $this->assertFalse($thread->isUnread($user));
 
-        $thread2 = $this->faktory->create('thread', ['subject' => 'Second Thread', 'updated_at' => Carbon::now()]);
+        $thread2 = $this->faktory->create('thread', ['name' => 'Second Thread', 'updated_at' => Carbon::now()]);
         $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
         $thread2->participants()->saveMany([$participant_2]);
 
@@ -486,5 +487,25 @@ class EloquentThreadTest extends TestCase
 
         $this->assertFalse($thread->creator()->exists);
         $this->assertNull($thread->creator()->name);
+    }
+
+    /** @test **/
+    function it_can_attach_to_a_subject()
+    {
+        $thread = $this->faktory->create('thread');
+        $subject = User::first(); // could be any eloquent model
+
+        $thread->setSubject($subject)->save();
+
+        $this->assertTrue($thread->subject->is($subject));
+    }
+
+    /** @test **/
+    function it_can_find_a_thread_for_a_given_subject()
+    {
+        $subject = User::first(); // could be any eloquent model
+        $this->faktory->create('thread')->setSubject($subject)->save();
+
+        $this->assertEquals(1, Thread::forSubject($subject)->count());
     }
 }
