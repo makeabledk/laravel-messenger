@@ -227,12 +227,13 @@ class Thread extends Eloquent
      * Add users to thread as participants.
      *
      * @param array|mixed $user
+     * @return Collection
      */
     public function addParticipant($user)
     {
-        Collection::wrap(count(func_get_args()) > 1 ? func_get_args() : $user)
-            ->each(function ($user) {
-                Models::participant()->firstOrCreate([
+        return Collection::wrap(count(func_get_args()) > 1 ? func_get_args() : $user)
+            ->map(function ($user) {
+                return Models::participant()->firstOrCreate([
                     'user_type' => $user->getMorphClass(),
                     'user_id' => $user->getKey(),
                     'thread_id' => $this->id,
@@ -419,12 +420,15 @@ class Thread extends Eloquent
     public function send($message, $user = null)
     {
         $message = ($message instanceof Message ? $message : (new Message)->fill(['body' => $message]));
+        $message->thread()->associate($this);
 
         if ($user) {
             $message->setUser($user);
         }
 
-        $this->messages()->save($message);
+        $message->save();
+
+//        $this->messages()->save($message);
 
         return $message;
     }

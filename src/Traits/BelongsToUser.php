@@ -2,6 +2,7 @@
 
 namespace Cmgmyr\Messenger\Traits;
 
+use Cmgmyr\Messenger\Models\Participant;
 use Illuminate\Database\Eloquent\Builder;
 
 trait BelongsToUser

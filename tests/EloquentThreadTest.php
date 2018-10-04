@@ -524,4 +524,29 @@ class EloquentThreadTest extends TestCase
         $this->assertEquals('Hello world', $message->body);
         $this->assertTrue($message->exists);
     }
+
+    /** @test **/
+    function it_attaches_a_message_user_to_an_existing_participant()
+    {
+        $thread = $this->faktory->create('thread');
+        $thread->addParticipant($user = User::firstOrFail());
+
+        $participant = $thread->participants()->first();
+
+        $message = $thread->send('Hello world', $user);
+
+        $this->assertEquals($message->participant->id, $participant->id);
+        $this->assertEquals($message->participant->user->id, $user->id);
+    }
+
+    /** @test **/
+    function it_creates_a_new_participant_for_a_message_user()
+    {
+        $thread = $this->faktory->create('thread');
+
+        $message = $thread->send('Hello world', $user = User::firstOrFail());
+
+        $this->assertEquals($message->participant->thread_id, $thread->id);
+        $this->assertEquals($message->participant->user->id, $user->id);
+    }
 }

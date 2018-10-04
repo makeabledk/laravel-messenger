@@ -63,6 +63,14 @@ class Message extends Eloquent
     }
 
     /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function participant()
+    {
+        return $this->belongsTo(Participant::class);
+    }
+
+    /**
      * Participants relationship.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
@@ -102,5 +110,19 @@ class Message extends Eloquent
                             ->orWhereNull('last_read');
                     });
             });
+    }
+
+
+    /**
+     * @param $user
+     * @return mixed
+     */
+    public function setUser($user)
+    {
+        return $this->fill([
+            'user_id' => $user->getKey(),
+            'user_type' => $user->getMorphClass(),
+            'participant_id' => Thread::findOrFail($this->thread_id)->addParticipant($user)->first()->id
+        ]);
     }
 }
