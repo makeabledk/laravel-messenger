@@ -67,10 +67,19 @@ class Thread extends Eloquent
      * Returns the latest message from a thread.
      *
      * @return \Cmgmyr\Messenger\Models\Message
+     * @deprecated
      */
     public function getLatestMessageAttribute()
     {
-        return $this->messages()->latest()->first();
+        return $this->latestMessage()->first();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function latestMessage()
+    {
+        return $this->hasOne(Models::classname(Message::class), 'thread_id', 'id')->latest();
     }
 
     /**
@@ -141,6 +150,42 @@ class Thread extends Eloquent
     }
 
     /**
+     * Returns threads between given user ids.
+     *
+     * @param Builder $query
+     * @param array $users
+     *
+     * @return Builder
+     */
+    public function scopeBetween(Builder $query, array $users)
+    {
+        return $query->whereHas('participants', function (Builder $q) use ($users) {
+            $q->where(function ($q) use ($users) {
+                foreach ($users as $user) {
+                    $q->orWhere(function ($q) use ($user) {
+                        $q->forUser($user);
+                    });
+                }
+            })->select($this->getConnection()->raw('DISTINCT(thread_id)'))
+                ->groupBy('thread_id')
+                ->havingRaw('COUNT(thread_id)=' . count($users));
+        });
+    }
+
+    /**
+     * @param $query
+     * @param $subject
+     * @return mixed
+     */
+    public function scopeForSubject($query, $subject)
+    {
+        return $query
+            ->where('subject_id', $subject->getKey())
+            ->where('subject_type', $subject->getMorphClass());
+    }
+
+
+    /**
      * Returns threads that the user is associated with.
      *
      * @param Builder $query
@@ -163,15 +208,38 @@ class Thread extends Eloquent
     }
 
     /**
-     * @param $query
-     * @param $subject
+     * Alias for whereHasUnread
+     *
+     * @param Builder $query
+     * @param $userId
+     * @param null $userType
+     * @deprecated
+     *
+     * @return Builder
+     */
+    public function scopeForUserWithNewMessages(...$args)
+    {
+        return $this->scopeWhereHasUnread(...$args);
+    }
+
+    /**
+     * @param Builder $query
      * @return mixed
      */
-    public function scopeForSubject($query, $subject)
+    public function scopeSortByLatestMessage($query)
     {
+        if ($query->getQuery()->columns === null) {
+            $query->selectRaw($this->getTable().'.*');
+        }
+
         return $query
-            ->where('subject_id', $subject->getKey())
-            ->where('subject_type', $subject->getMorphClass());
+            ->selectSub(
+                Models::classname(Message::class)::selectRaw('MAX(created_at)')
+                    ->whereRaw($this->getTable().'.id = '.Models::table('messages').'.thread_id')
+                    ->getQuery(),
+                'latest_message_created_at'
+            )
+            ->latest('latest_message_created_at');
     }
 
     /**
@@ -192,21 +260,6 @@ class Thread extends Eloquent
     }
 
     /**
-     * Alias for whereHasUnread
-     *
-     * @param Builder $query
-     * @param $userId
-     * @param null $userType
-     * @deprecated
-     *
-     * @return Builder
-     */
-    public function scopeForUserWithNewMessages(...$args)
-    {
-        return $this->scopeWhereHasUnread(...$args);
-    }
-
-    /**
      * Returns threads with new messages that the user is associated with.
      *
      * @param Builder $query
@@ -219,8 +272,6 @@ class Thread extends Eloquent
     {
         list($userId, $userType) = $this->getMorphIdAndType($userId, $userType);
 
-        $messagesTable = Models::table('messages');
-
         if ($query->getQuery()->columns === null) {
             $query->selectRaw($this->getTable().'.*');
         }
@@ -228,34 +279,10 @@ class Thread extends Eloquent
         return $query->selectSub(
             Models::classname(Message::class)::unreadForUser($userId, $userType)
                 ->selectRaw('COUNT(*)')
-                ->whereRaw($this->getTable().'.id = '.$messagesTable.'.thread_id')
+                ->whereRaw($this->getTable().'.id = '.Models::table('messages').'.thread_id')
                 ->getQuery(),
             'unread_count'
         );
-    }
-
-
-    /**
-     * Returns threads between given user ids.
-     *
-     * @param Builder $query
-     * @param array $users
-     *
-     * @return Builder
-     */
-    public function scopeBetween(Builder $query, array $users)
-    {
-        return $query->whereHas('participants', function (Builder $q) use ($users) {
-            $q->where(function ($q) use ($users) {
-                foreach ($users as $user) {
-                    $q->orWhere(function ($q) use ($user) {
-                        $q->forUser($user);
-                    });
-                }
-            })->select($this->getConnection()->raw('DISTINCT(thread_id)'))
-                ->groupBy('thread_id')
-                ->havingRaw('COUNT(thread_id)=' . count($users));
-        });
     }
 
     /**

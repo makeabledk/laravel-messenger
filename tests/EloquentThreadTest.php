@@ -570,4 +570,27 @@ class EloquentThreadTest extends TestCase
         // Returns 0 for none-participating users
         $this->assertEquals(Thread::withUnreadCount($anyoneElse = User::findOrFail(3))->first()->unread_count, 0);
     }
+
+    /** @test */
+    function it_can_sort_by_latest_message()
+    {
+        $this->faktory->create('thread')->send('Hello world', User::find(1));
+        sleep(1);
+        $this->faktory->create('thread')->send('Hello world', User::find(2));
+
+        $threads = Thread::sortByLatestMessage()->get();
+
+        $this->assertEquals($threads->get(0)->id, 2);
+        $this->assertEquals($threads->get(1)->id, 1);
+    }
+
+    /** @test */
+    function it_can_eager_load_the_latest_message()
+    {
+        $this->faktory->create('thread')->send('Hello world', User::find(1));
+
+        $thread = Thread::with('latestMessage')->first();
+
+        $this->assertEquals($thread->latestMessage->id, 1);
+    }
 }
