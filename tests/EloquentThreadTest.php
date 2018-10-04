@@ -489,7 +489,7 @@ class EloquentThreadTest extends TestCase
         $this->assertNull($thread->creator()->name);
     }
 
-    /** @test **/
+    /** @test * */
     public function it_can_attach_to_a_subject()
     {
         $thread = $this->faktory->create('thread');
@@ -500,7 +500,7 @@ class EloquentThreadTest extends TestCase
         $this->assertTrue($thread->subject->is($subject));
     }
 
-    /** @test **/
+    /** @test * */
     public function it_can_find_a_thread_for_a_given_subject()
     {
         $subject = User::first(); // could be any eloquent model
@@ -509,7 +509,7 @@ class EloquentThreadTest extends TestCase
         $this->assertEquals(1, Thread::forSubject($subject)->count());
     }
 
-    /** @test **/
+    /** @test * */
     function it_can_send_message_through_a_thread()
     {
         $thread = $this->faktory->create('thread');
@@ -525,7 +525,7 @@ class EloquentThreadTest extends TestCase
         $this->assertTrue($message->exists);
     }
 
-    /** @test **/
+    /** @test * */
     function it_attaches_a_message_user_to_an_existing_participant()
     {
         $thread = $this->faktory->create('thread');
@@ -539,7 +539,7 @@ class EloquentThreadTest extends TestCase
         $this->assertEquals($message->participant->user->id, $user->id);
     }
 
-    /** @test **/
+    /** @test * */
     function it_creates_a_new_participant_for_a_message_user()
     {
         $thread = $this->faktory->create('thread');
