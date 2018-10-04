@@ -147,8 +147,9 @@ class EloquentThreadTest extends TestCase
         $participant_2 = $this->faktory->create('participant', ['user_id' => $user->id, 'thread_id' => $thread2->id, 'last_read' => Carbon::yesterday()]);
         $thread2->participants()->saveMany([$participant_2]);
 
-        $this->assertEquals(1, Thread::forUserWithNewMessages($user)->count());
-        $this->assertEquals(1, Thread::forUserWithNewMessages($user->id, $user->getMorphClass())->count());
+        $this->assertEquals(1, Thread::whereHasUnread($user)->count());
+        $this->assertEquals(1, Thread::whereHasUnread($user->id, $user->getMorphClass())->count());
+        $this->assertEquals(1, Thread::forUserWithNewMessages($user)->count()); // deprecated
     }
 
     /** @test */
@@ -489,7 +490,7 @@ class EloquentThreadTest extends TestCase
         $this->assertNull($thread->creator()->name);
     }
 
-    /** @test * */
+    /** @test */
     public function it_can_attach_to_a_subject()
     {
         $thread = $this->faktory->create('thread');
@@ -500,7 +501,7 @@ class EloquentThreadTest extends TestCase
         $this->assertTrue($thread->subject->is($subject));
     }
 
-    /** @test * */
+    /** @test */
     public function it_can_find_a_thread_for_a_given_subject()
     {
         $subject = User::first(); // could be any eloquent model
@@ -509,7 +510,7 @@ class EloquentThreadTest extends TestCase
         $this->assertEquals(1, Thread::forSubject($subject)->count());
     }
 
-    /** @test * */
+    /** @test */
     function it_can_send_message_through_a_thread()
     {
         $thread = $this->faktory->create('thread');
@@ -525,7 +526,7 @@ class EloquentThreadTest extends TestCase
         $this->assertTrue($message->exists);
     }
 
-    /** @test * */
+    /** @test */
     function it_attaches_a_message_user_to_an_existing_participant()
     {
         $thread = $this->faktory->create('thread');
@@ -539,7 +540,7 @@ class EloquentThreadTest extends TestCase
         $this->assertEquals($message->participant->user->id, $user->id);
     }
 
-    /** @test * */
+    /** @test */
     function it_creates_a_new_participant_for_a_message_user()
     {
         $thread = $this->faktory->create('thread');
@@ -548,5 +549,25 @@ class EloquentThreadTest extends TestCase
 
         $this->assertEquals($message->participant->thread_id, $thread->id);
         $this->assertEquals($message->participant->user->id, $user->id);
+    }
+
+    /** @test */
+    function it_can_eager_load_unread_count_for_a_participating_user()
+    {
+        $thread = $this->faktory->create('thread');
+        $thread->addParticipant($me = User::findOrFail(1), $other = User::findOrFail(2));
+
+        $thread->send('Hello world', $me);
+        $this->assertEquals(Thread::withUnreadCount($me)->first()->unread_count, 0);
+
+        $thread->send('Hello world', $other);
+        $this->assertEquals(Thread::withUnreadCount($me)->first()->unread_count, 1);
+
+        $thread->markAsRead($me);
+
+        $this->assertEquals(Thread::withUnreadCount($me)->first()->unread_count, 0);
+
+        // Returns 0 for none-participating users
+        $this->assertEquals(Thread::withUnreadCount($anyoneElse = User::findOrFail(3))->first()->unread_count, 0);
     }
 }

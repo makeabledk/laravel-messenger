@@ -5,6 +5,7 @@ namespace Cmgmyr\Messenger\Models;
 use Cmgmyr\Messenger\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model as Eloquent;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Message extends Eloquent
@@ -67,7 +68,7 @@ class Message extends Eloquent
      */
     public function participant()
     {
-        return $this->belongsTo(Participant::class);
+        return $this->belongsTo(Models::classname(Participant::class));
     }
 
     /**
@@ -101,17 +102,15 @@ class Message extends Eloquent
      */
     public function scopeUnreadForUser(Builder $query, $userId, $userType = null)
     {
-        return $query->has('thread')
+        return $query
             ->exceptForUser($userId, $userType)
             ->whereHas('participants', function (Builder $query) use ($userId, $userType) {
                 $query->forUser($userId, $userType)
                     ->where(function (Builder $q) {
-                        $q->where('last_read', '<', $this->getConnection()->raw($this->getConnection()->getTablePrefix() . $this->getTable() . '.created_at'))
-                            ->orWhereNull('last_read');
+                        $q->whereRaw('last_read < '.$this->getTable().'.created_at')->orWhereNull('last_read');
                     });
             });
     }
-
 
     /**
      * @param $user

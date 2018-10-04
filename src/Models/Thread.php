@@ -175,6 +175,38 @@ class Thread extends Eloquent
     }
 
     /**
+     * Returns threads with unread messages
+     *
+     * @param Builder $query
+     * @param $userId
+     * @param null $userType
+     *
+     * @return Builder
+     */
+    public function scopeWhereHasUnread(Builder $query, $userId, $userType = null)
+    {
+        return $query
+            ->withUnreadCount($userId, $userType)
+            ->groupBy($this->getTable().'.id')
+            ->having('unread_count', '>', 0);
+    }
+
+    /**
+     * Alias for whereHasUnread
+     *
+     * @param Builder $query
+     * @param $userId
+     * @param null $userType
+     * @deprecated
+     *
+     * @return Builder
+     */
+    public function scopeForUserWithNewMessages(...$args)
+    {
+        return $this->scopeWhereHasUnread(...$args);
+    }
+
+    /**
      * Returns threads with new messages that the user is associated with.
      *
      * @param Builder $query
@@ -183,22 +215,25 @@ class Thread extends Eloquent
      *
      * @return Builder
      */
-    public function scopeForUserWithNewMessages(Builder $query, $userId, $userType = null)
+    public function scopeWithUnreadCount(Builder $query, $userId, $userType = null)
     {
-        $participantTable = Models::table('participants');
-        $threadsTable = Models::table('threads');
         list($userId, $userType) = $this->getMorphIdAndType($userId, $userType);
 
-        return $query->join($participantTable, $this->getQualifiedKeyName(), '=', $participantTable . '.thread_id')
-            ->where($participantTable . '.user_type', $userType)
-            ->where($participantTable . '.user_id', $userId)
-            ->whereNull($participantTable . '.deleted_at')
-            ->where(function (Builder $query) use ($participantTable, $threadsTable) {
-                $query->where($threadsTable . '.updated_at', '>', $this->getConnection()->raw($this->getConnection()->getTablePrefix() . $participantTable . '.last_read'))
-                    ->orWhereNull($participantTable . '.last_read');
-            })
-            ->select($threadsTable . '.*');
+        $messagesTable = Models::table('messages');
+
+        if ($query->getQuery()->columns === null) {
+            $query->selectRaw($this->getTable().'.*');
+        }
+
+        return $query->selectSub(
+            Models::classname(Message::class)::unreadForUser($userId, $userType)
+                ->selectRaw('COUNT(*)')
+                ->whereRaw($this->getTable().'.id = '.$messagesTable.'.thread_id')
+                ->getQuery(),
+            'unread_count'
+        );
     }
+
 
     /**
      * Returns threads between given user ids.
@@ -427,8 +462,6 @@ class Thread extends Eloquent
         }
 
         $message->save();
-
-//        $this->messages()->save($message);
 
         return $message;
     }
